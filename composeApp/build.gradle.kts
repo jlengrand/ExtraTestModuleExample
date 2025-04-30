@@ -13,6 +13,18 @@ kotlin {
         val desktopMain by getting
         val desktopTest by getting
 
+        val desktopChainTest by creating {
+            kotlin.srcDir("src/desktopChainTest/kotlin")
+            resources.srcDir("src/desktopChainTest/resources")
+        }
+
+        afterEvaluate {
+            val desktopMainCompilation = kotlin.targets.getByName("desktop").compilations.getByName("main")
+            val desktopChainTestCompilation = kotlin.targets.getByName("desktop").compilations.create("chainTest")
+            desktopChainTestCompilation.defaultSourceSet.dependsOn(desktopChainTest)
+            desktopChainTestCompilation.associateWith(desktopMainCompilation)
+        }
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -34,10 +46,29 @@ kotlin {
             implementation(libs.junit5)
         }
 
+        desktopChainTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.junit5)
+        }
+
         tasks.withType<Test> {
             useJUnitPlatform()
         }
 
+    }
+}
+
+afterEvaluate {
+    tasks.register<Test>("desktopChainTest") {
+        description = "Runs full chain tests"
+
+        val fullChainTestCompilation = kotlin.targets.getByName("desktop").compilations.getByName("chainTest")
+        testClassesDirs = fullChainTestCompilation.output.classesDirs
+        classpath = fullChainTestCompilation.output.classesDirs +
+                fullChainTestCompilation.compileDependencyFiles +
+                fullChainTestCompilation.output.resourcesDir.let { if (it.exists()) files(it) else files() }
+
+        useJUnitPlatform()
     }
 }
 
